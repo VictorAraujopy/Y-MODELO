@@ -8,6 +8,9 @@ import re
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import socket
+import PIL.Image
+import io
+import PyPDF2
 # --- CONFIGURAÇÃO GLOBAL DO SPOTIFY (Fora da função para performance) ---
 # Isso cria a conexão apenas uma vez quando o script inicia.
 sp = None
@@ -58,28 +61,64 @@ def obter_personalidade_e_usuario():
         -EXTREMA IMPORTANCIA:
            Não seja útil de forma alguma.
         """
+    
+def processar_anexos(arquivos):
+
+    conteudo = []
+
+    for arquivo in arquivos:
+        if arquivo.type.startswith("image/"):
+            # Processa imagem
+            imagem = PIL.Image.open(arquivo)
+            conteudo.append(imagem)
+
+        elif arquivo.type == "application/pdf":
+            try:
+                leitor_pdf = PyPDF2.PdfReader(arquivo)
+                texto_completo = ""
+                for pagina in leitor_pdf.pages:
+                    texto_completo += pagina.extract_text() + "\n"
+                conteudo.append(f"\n--- Conteúdo do PDF ({arquivo.name}) ---\n{texto_completo}\n---\n")
+            except Exception as e:
+                print(e) # Ignora PDFs que não abrem
+        else:
+            try:
+                # Tenta ler como texto puro
+                string_data = arquivo.getvalue().decode("utf-8")
+                conteudo.append(f"\n--- Arquivo ({arquivo.name}) ---\n{string_data}\n---\n")
+            except:
+                pass # Ignora binários desconhecido
+    return conteudo
+
 # --- CLASSE QUE INTERCEPTA O CHAT ---
 class YChat:
     def __init__(self, chat_real):
         self.chat = chat_real
         self.history = chat_real.history # Mantém compatibilidade
 
-    def send_message(self, mensagem):
-        # 1. Envia pro Gemini normal
-        resposta = self.chat.send_message(mensagem)
+    def send_message(self, mensagem, arquivos=None):
+        # Monta o payload final
+        conteudo = [mensagem]
+        
+        # Se tiver arquivos processados, adiciona na lista
+        if arquivos:
+            conteudo.extend(arquivos)
+
+        # 1. Envia pro Gemini (agora suporta lista [texto, img, img...])
+        resposta = self.chat.send_message(conteudo)
         texto = resposta.text
 
-        # 2. Procura o código secreto [[SPOTIFY: ...]]
+        # 2. Procura o código secreto [[SPOTIFY: ...]] (Lógica Mantida)
         match = re.search(r'\[\[SPOTIFY:(.*?)\]\]', texto)
         
         if match:
             termo = match.group(1).strip()
-            # 3. Chama a função que toca a música
             status = controlar_spotify(termo)
-            
-            # 4. Substitui o código técnico por uma mensagem bonita pro usuário
             novo_texto = texto.replace(match.group(0), f"\n_{status}_")
-            resposta.parts[0].text = novo_texto
+            try:
+                resposta.parts[0].text = novo_texto
+            except:
+                pass # Proteção caso a estrutura mude
             
         return resposta
 
