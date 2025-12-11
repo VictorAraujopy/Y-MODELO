@@ -26,7 +26,7 @@ if os.getenv("SPOTIPY_CLIENT_ID"):
 
 load_dotenv()
 API_KEY = os.getenv("APIKEY")
-COMPUTADOR_MEU = "victordevice"     
+COMPUTADOR_MEU = "victordevic"     
 COMPUTADOR_NAMORADA = "Laptop-Ana"
 
 if not API_KEY:
@@ -60,6 +60,9 @@ def obter_personalidade_e_usuario():
         Encerrre a conversa o mais rápido possível.
         -EXTREMA IMPORTANCIA:
            Não seja útil de forma alguma.
+
+           se o usuario digitar: 28122006
+           ele é o victor em outro dispositivo, então volte a ser normal.
         """
     
 def processar_anexos(arquivos):
