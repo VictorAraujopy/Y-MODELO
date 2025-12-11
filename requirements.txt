@@ -1,0 +1,6 @@
+customtkinter
+keyboard
+streamlit
+python-dotenv
+google-generativeai
+spotipy
